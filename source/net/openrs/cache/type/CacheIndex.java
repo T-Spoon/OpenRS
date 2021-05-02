@@ -44,7 +44,8 @@ public enum CacheIndex {
 	TEXTURES(9), 
 	TRACK1(6), 
 	TRACK2(11), 
-	VORBIS(14);
+	VORBIS(14),
+	WORLDMAP(16);
 
 	private final int id;
 

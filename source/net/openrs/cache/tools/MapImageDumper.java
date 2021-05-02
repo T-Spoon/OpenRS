@@ -16,6 +16,10 @@
  */
 package net.openrs.cache.tools;
 
+import com.google.gson.Gson;
+import com.google.gson.annotations.SerializedName;
+import com.google.gson.reflect.TypeToken;
+
 import net.openrs.cache.Cache;
 import net.openrs.cache.Constants;
 import net.openrs.cache.Container;
@@ -33,17 +37,23 @@ import net.openrs.cache.type.underlays.UnderlayType;
 import net.openrs.cache.util.XTEAManager;
 import net.openrs.util.BigBufferedImage;
 
-import javax.imageio.ImageIO;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.Image;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+
+import javax.imageio.ImageIO;
 
 /**
  * Created by Kyle Fricilone on Sep 16, 2016.
@@ -174,14 +184,14 @@ public class MapImageDumper {
     private static final int MAX_REGION = 32768;
     private static final int PIXELS_PER_TILE = 4;
 
-    private static final boolean DRAW_WALLS = true;
-    private static final boolean DRAW_ICONS = true;
-    private static final boolean DRAW_REGIONS = true;
+    private static final boolean DRAW_WALLS = false;
+    private static final boolean DRAW_ICONS = false;
+    private static final boolean DRAW_REGIONS = false;
     private static final boolean LABEL = true;
     private static final boolean OUTLINE = true;
     private static final boolean FILL = true;
 
-    private static final int Z_MIN = 0, Z_MAX = 3;
+    private static final int Z_MIN = 0, Z_MAX = 0;
 
     private void initialize(final Cache cache) throws IOException {
         TypeListManager.initialize(cache);
@@ -261,25 +271,27 @@ public class MapImageDumper {
             System.out.println("Generating map images for z = " + z);
 
             BufferedImage baseImage = BigBufferedImage.create(dimX, dimY, BufferedImage.TYPE_INT_RGB);
-            BufferedImage fullImage = BigBufferedImage.create(dimX, dimY, BufferedImage.TYPE_INT_RGB);
+            BufferedImage mapImage = BigBufferedImage.create(dimX, dimY, BufferedImage.TYPE_INT_RGB);
+            BufferedImage overlayImage = BigBufferedImage.create(dimX, dimY, BufferedImage.TYPE_INT_RGB);
 
-            Graphics2D graphics = fullImage.createGraphics();
+            Graphics2D graphics = mapImage.createGraphics();
+            Graphics2D overlayGraphics = overlayImage.createGraphics();
 
             graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
             graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
             graphics.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
 
             System.out.println("Drawing underlay");
-            drawUnderlay(z, baseImage);
+            //drawUnderlay(z, baseImage);
 
             System.out.println("Blending underlay");
-            blendUnderlay(z, baseImage, fullImage, boundX, boundY);
+            //blendUnderlay(z, baseImage, mapImage, boundX, boundY);
 
             System.out.println("Drawing overlay");
-            drawOverlay(z, fullImage);
+            //drawOverlay(z, mapImage);
 
             System.out.println("Drawing locations");
-            drawLocations(z, graphics);
+            //drawLocations(z, graphics);
 
             if (DRAW_WALLS) {
                 System.out.println("Drawing walls");
@@ -288,7 +300,7 @@ public class MapImageDumper {
 
             if (DRAW_ICONS) {
                 System.out.println("Drawing icons");
-                drawIcons(z, graphics);
+                drawIcons(z, overlayGraphics);
             }
 
             if (DRAW_REGIONS) {
@@ -297,11 +309,17 @@ public class MapImageDumper {
             }
 
             graphics.dispose();
+            overlayGraphics.dispose();
 
             System.out.println("Writing to files");
             ImageIO.write(baseImage, "png", new File("base_image_" + z + ".png"));
-            ImageIO.write(fullImage, "png", new File("full_image_" + z + ".png"));
+            ImageIO.write(mapImage, "png", new File("map_image_" + z + ".png"));
+            ImageIO.write(mapImage, "png", new File("marker_image_" + z + ".png"));
+
+
         }
+
+        exportMapIconsJson();
     }
 
     private void drawUnderlay(int z, BufferedImage image) {
@@ -543,11 +561,13 @@ public class MapImageDumper {
             int drawBaseX = region.getBaseX() - lowestX.getBaseX();
             int drawBaseY = highestY.getBaseY() - region.getBaseY();
 
+            System.out.println("Drawing " + region.getLocations().size() + " map icons for region: " + region.getRegionID());
             for (Location location : region.getLocations()) {
                 int localX = location.getPosition().getX() - region.getBaseX();
                 int localY = location.getPosition().getY() - region.getBaseY();
 
                 if (!canDrawLocation(region, location, z, localX, localY)) {
+                    //System.out.println("Can't draw location...");
                     continue;
                 }
 
@@ -559,6 +579,7 @@ public class MapImageDumper {
                 if (objType.getMapAreaId() != -1) {
                     AreaType areaType = TypeListManager.lookupArea(objType.getMapAreaId());
                     Image spriteImage = Sprites.getSprite(areaType.getSpriteId()).getFrame(0);
+                    System.out.println("Drawing icon... " + objType.getName());
                     graphics.drawImage(spriteImage, (drawX - 1) * PIXELS_PER_TILE, (drawY - 1) * PIXELS_PER_TILE, null);
                 }
             }
@@ -636,11 +657,67 @@ public class MapImageDumper {
         return new Color(image.getRGB(x, y));
     }
 
+    private void exportMapIconsJson() throws IOException {
+        // RegionId -> Items
+        final Map<Integer, List<MapExportItem>> mapIcons = new HashMap<>();
+        for (Region region : regions) {
+            final List<MapExportItem> regionItems = new ArrayList<>();
+            int drawBaseX = region.getBaseX() - lowestX.getBaseX();
+            int drawBaseY = highestY.getBaseY() - region.getBaseY();
+
+            for (Location location : region.getLocations()) {
+                int localX = location.getPosition().getX() - region.getBaseX();
+                int localY = location.getPosition().getY() - region.getBaseY();
+
+//                if (!canDrawLocation(region, location, z, localX, localY)) {
+//                    //System.out.println("Can't draw location...");
+//                    continue;
+//                }
+
+                ObjectType objType = TypeListManager.lookupObject(location.getId());
+
+                int drawX = drawBaseX + localX;
+                int drawY = drawBaseY + (63 - localY);
+
+                if (objType.getMapAreaId() != -1) {
+                    AreaType areaType = TypeListManager.lookupArea(objType.getMapAreaId());
+                    regionItems.add(new MapExportItem(location.getId(), areaType.getSpriteId(), objType.getName(), drawX, drawY));
+                }
+            }
+
+            mapIcons.put(region.getRegionID(), regionItems);
+        }
+
+        final Type type = new TypeToken<Map<Integer, List<MapExportItem>>>() {
+        }.getType();
+        final Gson gson = new Gson();
+        final FileWriter fileWriter = new FileWriter("map_icons.json");
+        gson.toJson(mapIcons, type, fileWriter);
+        fileWriter.close();
+    }
+
+    private static class MapExportItem {
+        @SerializedName("id") int id;
+        @SerializedName("sprite_id") int spriteId;
+        @SerializedName("type") String type;
+        @SerializedName("x") int x;
+        @SerializedName("y") int y;
+
+        public MapExportItem(int id, int spriteId, String type, int x, int y) {
+            this.id = id;
+            this.spriteId = spriteId;
+            this.type = type;
+            this.x = x;
+            this.y = y;
+        }
+    }
+
     public static void main(String[] args) {
         long ms = System.currentTimeMillis();
         MapImageDumper dumper = new MapImageDumper();
 
         try (Cache cache = new Cache(FileStore.open(Constants.CACHE_PATH))) {
+            XTEAManager.initializeFromJson(new File("./repository/xteas.json"));
             dumper.initialize(cache);
             dumper.draw();
         } catch (Exception e) {
