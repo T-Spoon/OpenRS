@@ -60,10 +60,11 @@ import net.openrs.cache.type.varclientstrings.VarClientStringType;
 import net.openrs.cache.type.varclientstrings.VarClientStringTypeList;
 import net.openrs.cache.type.varplayers.VarPlayerType;
 import net.openrs.cache.type.varplayers.VarPlayerTypeList;
+//import net.openrs.cache.type.world.WorldMapDefinition;
+//import net.openrs.cache.type.world.WorldMapTypeList;
 
 /**
  * @author Kyle Friz
- *
  * @since May 26, 2015
  */
 public class TypeListManager {
@@ -87,6 +88,7 @@ public class TypeListManager {
     private static final StructTypeList struct = new StructTypeList();
     private static final HitMarkTypeList hitmark = new HitMarkTypeList();
     private static final HitBarTypeList hitbar = new HitBarTypeList();
+//    private static final WorldMapTypeList worldmap = new WorldMapTypeList();
 
     public static void initialize(Cache cache) {
         enm.initialize(cache);
@@ -262,6 +264,10 @@ public class TypeListManager {
         return hitbar.list(id);
     }
 
+//    public static final WorldMapDefinition lookupWorldMap(int id) {
+//        return worldmap.list(id);
+//    }
+
     public static void print() {
         item.print();
         ident.print();
@@ -282,6 +288,7 @@ public class TypeListManager {
         struct.print();
         hitmark.print();
         hitbar.print();
+//        worldmap.print();
     }
 
 }

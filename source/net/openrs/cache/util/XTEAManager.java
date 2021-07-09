@@ -29,8 +29,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.lang.reflect.Type;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -65,43 +63,44 @@ public class XTEAManager {
     static {
         try {
 
-            File xMapDir = new File(Constants.XMAP_PATH);
-
-            if (!xMapDir.exists()) {
-                xMapDir.mkdirs();
-            }
-
-            for (File file : xMapDir.listFiles()) {
-                if (file.getName().endsWith(".txt")) {
-                    Integer regionID = Integer.valueOf(file.getName().substring(0,
-                            file.getName().indexOf(".txt")));
-
-                    int[] keys = Files.lines(Paths.get(".")
-                            .resolve(Constants.XMAP_PATH + file.getName()))
-                            .map(Integer::valueOf).mapToInt(Integer::intValue).toArray();
-
-                    maps.put(regionID, keys);
-                }
-            }
-
-            File xTableDir = new File(Constants.XTABLE_PATH);
-
-            if (!xTableDir.exists()) {
-                xTableDir.mkdirs();
-            }
-
-            for (File file : xTableDir.listFiles()) {
-                if (file.getName().endsWith(".txt")) {
-                    Integer typeID = Integer.valueOf(file.getName().substring(0,
-                            file.getName().indexOf(".txt")));
-
-                    int[] keys = Files.lines(Paths.get(".")
-                            .resolve(Constants.XTABLE_PATH + file.getName()))
-                            .map(Integer::valueOf).mapToInt(Integer::intValue).toArray();
-
-                    tables.put(typeID, keys);
-                }
-            }
+//            File xMapDir = new File(Constants.XMAP_PATH);
+//
+//            if (!xMapDir.exists()) {
+//                xMapDir.mkdirs();
+//            }
+//
+//            for (File file : xMapDir.listFiles()) {
+//                if (file.getName().endsWith(".txt")) {
+//                    Integer regionID = Integer.valueOf(file.getName().substring(0,
+//                            file.getName().indexOf(".txt")));
+//
+//                    int[] keys = Files.lines(Paths.get(".")
+//                            .resolve(Constants.XMAP_PATH + file.getName()))
+//                            .map(Integer::valueOf).mapToInt(Integer::intValue).toArray();
+//
+//                    maps.put(regionID, keys);
+//                }
+//            }
+//
+//            File xTableDir = new File(Constants.XTABLE_PATH);
+//
+//            if (!xTableDir.exists()) {
+//                xTableDir.mkdirs();
+//            }
+//
+//            for (File file : xTableDir.listFiles()) {
+//                if (file.getName().endsWith(".txt")) {
+//                    Integer typeID = Integer.valueOf(file.getName().substring(0,
+//                            file.getName().indexOf(".txt")));
+//
+//                    int[] keys = Files.lines(Paths.get(".")
+//                            .resolve(Constants.XTABLE_PATH + file.getName()))
+//                            .map(Integer::valueOf).mapToInt(Integer::intValue).toArray();
+//
+//                    tables.put(typeID, keys);
+//                }
+//            }
+//            initializeFromJson(new File(Constants.XTEA_JSON_FILE));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -110,11 +109,16 @@ public class XTEAManager {
     public static void touch() {
     }
 
-    public static void initializeFromJson(File xetaJsonFile) throws FileNotFoundException {
+    public static void initializeFromJson(File xteaJsonFile) {
         final Type type = new TypeToken<List<XTEAEntry>>() {
         }.getType();
         final Gson gson = new Gson();
-        final JsonReader reader = new JsonReader(new FileReader(xetaJsonFile));
+        final JsonReader reader;
+        try {
+            reader = new JsonReader(new FileReader(xteaJsonFile));
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
         final List<XTEAEntry> entries = gson.fromJson(reader, type);
         for (XTEAEntry entry : entries) {
             maps.put(entry.regionId, entry.key);

@@ -37,12 +37,12 @@ public class AreaType implements Type {
 	private int spriteId = -1;
 	private int anInt1967 = -1;
 	private String name;
-	private int anInt1959;
+	private int textColor;
 	private int anInt1968 = 0;
 	private int[] anIntArray1982;
 	private String aString1970;
 	private int[] anIntArray1981;
-	private int anInt1980;
+	private int category;
 	private byte[] aByteArray1979;
 	private String[] aStringArray1969 = new String[5];
 
@@ -69,7 +69,7 @@ public class AreaType implements Type {
 			} else if (opcode == 3) {
 				name = ByteBufferUtils.getString(buffer);
 			} else if (opcode == 4) {
-				anInt1959 = ByteBufferUtils.getMedium(buffer);
+				textColor = ByteBufferUtils.getMedium(buffer);
 			} else if (opcode == 5) {
 				ByteBufferUtils.getMedium(buffer);
 			} else if (opcode == 6) {
@@ -110,7 +110,7 @@ public class AreaType implements Type {
 			} else if (opcode == 18) {
 				ByteBufferUtils.getSmartInt(buffer);
 			} else if (opcode == 19) {
-				anInt1980 = buffer.getShort() & 0xFFFF;
+				category = buffer.getShort() & 0xFFFF;
 			} else if (opcode == 21) {
 				buffer.getInt();
 			} else if (opcode == 22) {
